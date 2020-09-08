@@ -1,0 +1,158 @@
+"""
+测试样例
+11
+H2+O2=H2O
+2H2+O2=2H2O
+H2+Cl2=2NaCl
+H2+Cl2=2HCl
+CH4+2O2=CO2+2H2O
+CaCl2+2AgNO3=Ca(NO3)2+2AgCl
+3Ba(OH)2+2H3PO4=6H2O+Ba3(PO4)2
+3Ba(OH)2+2H3PO4=Ba3(PO4)2+6H2O
+4Zn+10HNO3=4Zn(NO3)2+NH4NO3+3H2O
+4Au+8NaCN+2H2O+O2=4Na(Au(CN)2)+4NaOH
+Cu+As=Cs+Au
+"""
+
+
+def dictA_plus_equals_dictB(A: dict, B: dict):
+    """
+    将字典B的values叠加到A上
+    """
+    for key in B.keys():
+        if A.get(key):
+            A[key] += B[key]
+        else:
+            A[key] = B[key]
+
+
+def dictA_multiply(A: dict, k):
+    """
+    对dictA每个value都自乘k
+    """
+    for key in A.keys():
+        A[key] *= k
+
+
+def get_prefix_int(exp) -> (int, int):
+    """
+    :return: (数字大小，数字长度)，若exp不符合规范，则返回0, 0
+    """
+    if exp == "" or not str[0].isdigit():
+        return 0, 0
+    i = 0
+    while i != len(exp) and str[i].isdigit():
+        i += 1
+    return int(exp[:i]), i
+
+
+def counts_from_expression(exp) -> dict:
+    """
+    由化学方程式返回元素统计信息
+    :param exp:表达式
+    :return:元素统计
+    """
+    k, beg = 1, 0
+    count = {}
+    length = len(exp)
+    if exp[0].isdigit():
+        num_offset = get_prefix_int(exp)
+        k = num_offset[0]
+        beg += num_offset[1]
+    while beg < length:
+        if beg + 1 != length:
+            # 处理大写字母开头
+            if exp[beg].isupper():
+                if exp[beg + 1].islower():
+                    # Zn1234
+                    if beg + 2 != length and exp[beg + 2].isdigit():
+                        num_offset = get_prefix_int(exp[beg + 2:])
+                        if count.get(exp[beg:beg + 2]):
+                            count[exp[beg:beg + 2]] += num_offset[0]
+                        else:
+                            count[exp[beg:beg + 2]] = num_offset[0]
+                        beg += num_offset[1] + 2
+                    # Zn
+                    else:
+                        if count.get(exp[beg:beg + 2]):
+                            count[exp[beg:beg + 2]] += 1
+                        else:
+                            count[exp[beg:beg + 2]] = 1
+                        beg += 2
+                # CO
+                elif exp[beg + 1].isupper() or exp[beg + 1] == '(':
+                    # 添加元素
+                    if count.get(exp[beg]):
+                        count[exp[beg]] += 1
+                    else:
+                        count[exp[beg]] = 1
+                    beg += 1
+                # C12
+                elif exp[beg + 1].isdigit():
+                    num_offset = get_prefix_int(exp[beg + 1:])
+                    # 添加元素
+                    if count.get(exp[beg]):
+                        count[exp[beg]] += num_offset[0]
+                    else:
+                        count[exp[beg]] = num_offset[0]
+                    # 下一个元素
+                    beg += num_offset[1] + 1
+            # 处理括号
+            elif exp[beg] == '(':
+                bracket_num = 1
+                end = beg
+                # 统计外括号终点
+                while bracket_num != 0:
+                    end += 1
+                    if exp[end] == '(':
+                        bracket_num += 1
+                    elif exp[end] == ')':
+                        bracket_num -= 1
+                dict_ret = counts_from_expression(exp[beg + 1: end])
+                # 外括号倍数
+                if end + 1 != length:
+                    num_offset = get_prefix_int(exp[end + 1])
+                    dictA_multiply(dict_ret, num_offset[0])
+                    dictA_plus_equals_dictB(count, dict_ret)
+                    beg = end + num_offset[1] + 1
+                else:
+                    dictA_plus_equals_dictB(count, dict_ret)
+                    beg = end + 1
+        # 一个字母
+        else:
+            if count.get(exp[beg]):
+                count[exp[beg]] += 1
+            else:
+                count[exp[beg]] = 1
+            beg += 1
+    dictA_multiply(count, k)
+    return count
+
+
+if __name__ == '__main__':
+    n = int(input())
+    sum_left, sum_right = {}, {}
+    for i in range(n):
+        left, right = [str for str in input().split('=')]
+        # 处理左式
+        beg, end, length = 0, 0, len(left)
+        while end < length:
+            while end != length and left[end] != '+':
+                end += 1
+            dictA_plus_equals_dictB(sum_left, counts_from_expression(left[beg: end]))
+            beg = end + 1
+            end = beg
+        # 处理右式
+        beg, end, length = 0, 0, len(right)
+        while end < length:
+            while end != length and right[end] != '+':
+                end += 1
+            dictA_plus_equals_dictB(sum_right, counts_from_expression(right[beg: end]))
+            beg = end + 1
+            end = beg
+        if sum_left == sum_right:
+            print('Y')
+        else:
+            print('N')
+        sum_left.clear()
+        sum_right.clear()
